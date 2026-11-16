@@ -1,0 +1,102 @@
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shop-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: shop
+      rules:
+
+        # 1. High HTTP error rate
+        - alert: HighErrorRate
+          expr: |
+            100 *
+            (
+              sum(rate(http_requests_total{namespace="shop", status_code=~"5.."}[5m]))
+              or vector(0)
+            )
+            /
+            clamp_min(
+              sum(rate(http_requests_total{namespace="shop"}[5m])),
+              0.000001
+            )
+            > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The shop application has a high HTTP error rate"
+            description: "More than 5% of shop application requests are returning HTTP 5xx responses for 5 minutes."
+            runbook: "docs/runbooks/high-error-rate.md"
+
+        # 2. High request latency
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(
+              0.99,
+              sum by (le) (
+                rate(http_request_duration_seconds_bucket{namespace="shop"}[5m])
+              )
+            ) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The shop application has high request latency"
+            description: "The 99th percentile request duration has exceeded 1 second for 5 minutes."
+            runbook: "docs/runbooks/high-latency.md"
+
+        # 3. Pod container restarts
+        - alert: PodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="shop"}[1h]) > 3
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "A shop application container is restarting frequently"
+            description: "A container in the shop namespace has restarted more than 3 times in the last hour."
+            runbook: "docs/runbooks/pod-crash-looping.md"
+
+        # 4. Kubernetes node not ready
+        - alert: NodeNotReady
+          expr: |
+            kube_node_status_condition{
+              condition="Ready",
+              status="true"
+            } == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "A Kubernetes node is not ready"
+            description: "A Kubernetes node has remained in a not-ready state for 5 minutes."
+            runbook: "docs/runbooks/node-not-ready.md"
+
+        # 5. Low filesystem space
+        - alert: DiskSpaceLow
+          expr: |
+            (
+              100 *
+              node_filesystem_avail_bytes{
+                mountpoint="/var",
+                fstype="ext4"
+              }
+              /
+              node_filesystem_size_bytes{
+                mountpoint="/var",
+                fstype="ext4"
+              }
+            ) < 10
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kubernetes node filesystem space is running low"
+            description: "The /var filesystem has less than 10% available space for at least 5 minutes."
+            runbook: "docs/runbooks/disk-space-low.md"

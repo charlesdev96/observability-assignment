@@ -1,0 +1,51 @@
+
+# Loki configuration for a local Kubernetes learning environment.
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 1
+
+  # Use the chart's built-in test schema for local development.
+  useTestSchema: true
+
+  storage:  
+    type: filesystem
+    filesystem:
+      chunks_directory: /var/loki/chunks
+      rules_directory: /var/loki/rules
+
+singleBinary:
+  replicas: 1
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+
+# Disable components used by other deployment modes.
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+backend:
+  replicas: 0
+
+# Keep the gateway enabled for a stable Loki endpoint.
+gateway:
+  enabled: true
+  replicas: 1
+
+# No external object storage required.
+minio:
+  enabled: false
+
+# Loki canary helps verify that Loki accepts and returns logs.
+lokiCanary:
+  enabled: true

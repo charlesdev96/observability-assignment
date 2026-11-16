@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: shop
+  labels:
+    app: orders
+    app.kubernetes.io/part-of: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders
+  template:
+    metadata:
+      labels:
+        app: orders
+        app.kubernetes.io/part-of: shop
+    spec:
+      containers:
+        - name: orders
+          image: shop-app:1.0.0
+          imagePullPolicy: IfNotPresent
+          args: ["src/orders.js"]
+          ports:
+            - name: http
+              containerPort: 3002
+          env:
+            - name: PORT
+              value: "3002"
+            - name: PAYMENTS_URL
+              value: "http://payments:3003"
+            - name: FAILURE_RATE
+              value: "0"
+            - name: LATENCY_MS
+              value: "0"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: shop
+  labels:
+    app: orders
+    app.kubernetes.io/part-of: shop
+spec:
+  selector:
+    app: orders
+  ports:
+    - name: http
+      port: 3002
+      targetPort: http

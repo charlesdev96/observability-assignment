@@ -1,0 +1,19 @@
+# Simple settings for the kube-prometheus-stack Helm chart.
+# Prometheus, Grafana and the Prometheus Operator are installed by the chart.
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+    retention: 2d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 300Mi
+
+grafana:
+  adminPassword: "change-me-after-learning"
+  service:
+    type: ClusterIP

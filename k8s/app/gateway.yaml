@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: shop
+  labels:
+    app: gateway
+    app.kubernetes.io/part-of: shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        app.kubernetes.io/part-of: shop
+    spec:
+      containers:
+        - name: gateway
+          image: shop-app:1.0.0
+          imagePullPolicy: IfNotPresent
+          args: ["src/gateway.js"]
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: PORT
+              value: "3001"
+            - name: ORDERS_URL
+              value: "http://orders:3002"
+            - name: FAILURE_RATE
+              value: "0"
+            - name: LATENCY_MS
+              value: "0"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: shop
+  labels:
+    app: gateway
+    app.kubernetes.io/part-of: shop
+spec:
+  selector:
+    app: gateway
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
